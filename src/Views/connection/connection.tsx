@@ -1,5 +1,7 @@
 import { motion, Variant } from "framer-motion";
+import { useEffect } from "react";
 import VirtualBackButton from "../../Components/VirtualBackButton";
+import useBluetoothConnection from "../../Lib/bluetooth";
 import useProvideCurrentWindow from "../../Lib/compass_navigator/window_container/use_provide_current_window";
 import useKeepAwake from "../../Lib/use_keep_awake";
 import ScanAnimationGraphic from "./components/scan_animation_graphic";
@@ -36,6 +38,12 @@ export default function Connection(props: ConnectionProps) {
   });
 
   useKeepAwake();
+
+  const ble = useBluetoothConnection();
+
+  useEffect(() => {
+    ble.setupConnection();
+  }, []);
 
   return (
     <div className="h-full w-full bg-white/20 backdrop-blur-sm">
