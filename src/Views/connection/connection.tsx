@@ -2,8 +2,12 @@ import { motion, Variant } from "framer-motion";
 import { useEffect } from "react";
 import VirtualBackButton from "../../Components/VirtualBackButton";
 import useBluetoothConnection from "../../Lib/bluetooth";
+import { useWindowing } from "../../Lib/compass_navigator";
+import useCurrentWindowKey from "../../Lib/compass_navigator/window_container/current_window_key_context";
 import useProvideCurrentWindow from "../../Lib/compass_navigator/window_container/use_provide_current_window";
+import Run from "../../Lib/run";
 import useKeepAwake from "../../Lib/use_keep_awake";
+import useUpdateEffect from "../../Lib/use_update_effect";
 import ScanAnimationGraphic from "./components/scan_animation_graphic";
 
 const variants = {
@@ -37,13 +41,22 @@ export default function Connection(props: ConnectionProps) {
     backButtonHandler: (exit) => exit(),
   });
 
+  const currentWindowKey = useCurrentWindowKey();
+  const windowing = useWindowing();
+
   useKeepAwake();
 
   const ble = useBluetoothConnection();
 
   useEffect(() => {
-    ble.setupConnection();
+    if (ble.state === "NotConnected") ble.setupConnection();
   }, []);
+
+  useUpdateEffect(() => {
+    if (ble.state === "Connected") {
+      windowing.removeWindow(currentWindowKey);
+    }
+  }, [ble.state]);
 
   return (
     <div className="h-full w-full bg-white/20 backdrop-blur-sm">
@@ -58,8 +71,20 @@ export default function Connection(props: ConnectionProps) {
           <h1 className="text-2xl">Conectar ao Hardware</h1>
         </header>
         <main className="flex shrink grow flex-col items-center justify-center gap-8 overflow-y-scroll">
-          <ScanAnimationGraphic className="inline-block w-1/3" />
-          <h2>Procurando dispositivo...</h2>
+          <ScanAnimationGraphic
+            className="inline-block w-1/3"
+            animated={ble.state === "Connecting" || ble.state === "Connected"}
+          />
+          {Run(() => {
+            switch (ble.state) {
+              case "NotConnected":
+                return <p>Desconectado</p>;
+              case "Connected":
+                return <p>A conexão está estabelecida.</p>;
+              case "Connecting":
+                return <p>Aguarde...</p>;
+            }
+          })}
         </main>
       </motion.div>
     </div>

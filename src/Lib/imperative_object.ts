@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { gbus, useMiniGBus } from "./gbus_mini";
 
 export type ObjectUUID = string & { _tag?: "objectUUID" };
@@ -10,6 +10,7 @@ export type ObjectUUID = string & { _tag?: "objectUUID" };
 export interface ImperativeObject {
   /** Unique identifier for the imperative object */
   uuid: ObjectUUID;
+
   /** Optional cleanup function executed when the object is unmounted */
   onUnmount?: () => void;
 }
@@ -22,11 +23,10 @@ export interface ImperativeObject {
  * - Subscribes to external mutation events to force React re-renders.
  * - Cleans up subscriptions on unmount.
  *
- * @param factory - Factory function that creates the imperative object
+ * @param object -The imperative object that will be listened for changes
  * @returns - The instantiated imperative object
  */
-export default function useImperativeObject<O extends ImperativeObject>(factory: () => O): O {
-  const object = useMemo(factory, []);
+export default function useSubscription<O extends ImperativeObject>(object: O): O {
   const gbus = useMiniGBus();
   const [, forceUpdate] = useState(false);
 
@@ -40,7 +40,6 @@ export default function useImperativeObject<O extends ImperativeObject>(factory:
 
     return () => {
       gbus.unsubscribe(eventKey);
-      object.onUnmount?.();
     };
   }, [object]);
 

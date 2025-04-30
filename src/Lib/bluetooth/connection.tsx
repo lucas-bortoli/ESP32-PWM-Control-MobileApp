@@ -1,6 +1,6 @@
 import { BleClient } from "@capacitor-community/bluetooth-le";
 import { Capacitor } from "@capacitor/core";
-import { ImperativeObject } from "../imperative_object";
+import { ImperativeObject, notifyUpdate } from "../imperative_object";
 import generateUUID from "../uuid";
 
 const SERVICE_UUID = "686ae9e3-0b45-485c-90bb-9442f3571af7";
@@ -18,6 +18,8 @@ export default class BluetoothOps implements ImperativeObject {
   public uuid: string = generateUUID();
   public state: "NotConnected" | "Connecting" | "Connected" = "NotConnected";
 
+  public pwm: number = 0;
+
   private deviceId: string | null = null;
   private onStatusUpdateCallback: ((value: number) => void) | null = null;
   private onErrorCallback: ((error: Error) => void) | null = null;
@@ -33,6 +35,7 @@ export default class BluetoothOps implements ImperativeObject {
       }
 
       this.state = "Connecting";
+      notifyUpdate(this);
       await BleClient.initialize({ androidNeverForLocation: true });
 
       // Request device
@@ -42,25 +45,30 @@ export default class BluetoothOps implements ImperativeObject {
 
       // handle device selection cancellation
       if (!device) {
+        this.state = "NotConnected";
+        notifyUpdate(this);
         throw new Error("Device selection canceled.");
       }
 
       this.deviceId = device.deviceId;
       this.state = "Connecting";
+      notifyUpdate(this);
 
       // connect to the device
       await BleClient.connect(this.deviceId, (deviceId) => this.handleDisconnect(deviceId));
-      this.state = "Connected";
 
       // discover services and characteristics
       await this.discoverServices();
       await this.subscribeToStatusCharacteristic();
 
+      this.state = "Connected";
       console.log("Connection established.");
+      notifyUpdate(this);
     } catch (error) {
       console.error("Connection failed:", error);
       this.state = "NotConnected";
       this.onErrorCallback?.(error as Error);
+      notifyUpdate(this);
     }
   }
 
@@ -213,6 +221,8 @@ export default class BluetoothOps implements ImperativeObject {
         (value) => {
           const status = value.getUint8(0);
           console.log("Status update received:", status);
+          this.pwm = status;
+          notifyUpdate(this);
           this.onStatusUpdateCallback?.(status);
         }
       );
@@ -228,13 +238,16 @@ export default class BluetoothOps implements ImperativeObject {
     this.onErrorCallback?.(new Error(`Device ${deviceId} disconnected`));
   }
 
-  public onUnmount(): void {
+  public async disconnect() {
     if (this.state === "Connected" && this.deviceId) {
-      BleClient.disconnect(this.deviceId).catch((err) =>
-        console.error("Failed to disconnect:", err)
-      );
+      try {
+        await BleClient.disconnect(this.deviceId);
+      } catch (error) {
+        console.error("Failed to disconnect:", error);
+      }
     }
     this.state = "NotConnected";
+    notifyUpdate(this);
   }
 }
 

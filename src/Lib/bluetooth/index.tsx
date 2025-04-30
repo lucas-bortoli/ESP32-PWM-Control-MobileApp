@@ -1,11 +1,18 @@
-import { createContext, PropsWithChildren, useContext } from "react";
-import useImperativeObject from "../imperative_object";
+import { createContext, PropsWithChildren, useContext, useMemo } from "react";
+import useSubscription from "../imperative_object";
 import BluetoothOps from "./connection";
+
+interface BluetoothContext {
+  state: BluetoothOps["state"];
+  pwm: number;
+  increasePWM: (delta: number) => Promise<void>;
+  decreasePWM: (delta: number) => Promise<void>;
+}
 
 const context = createContext<null | BluetoothOps>(null);
 
 export function BluetoothProvider(props: PropsWithChildren) {
-  const bluetooth = useImperativeObject(() => new BluetoothOps());
+  const bluetooth = useMemo(() => new BluetoothOps(), []);
 
   //@ts-expect-error
   window.bluetooth = bluetooth;
@@ -14,5 +21,7 @@ export function BluetoothProvider(props: PropsWithChildren) {
 }
 
 export default function useBluetoothConnection() {
-  return useContext(context)!;
+  const bluetooth = useSubscription(useContext(context)!);
+
+  return bluetooth;
 }

@@ -1,4 +1,4 @@
-package com.bortoli.nsreadings;
+package com.bortoli.pwm_control;
 
 import com.getcapacitor.BridgeActivity;
 

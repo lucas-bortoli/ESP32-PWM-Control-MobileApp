@@ -16,9 +16,11 @@
 
 .visual2:before {
   animation: spin 2s infinite linear;
+  animation-play-state: inherit;
 }
 .visual2:after {
   animation: spin 4s infinite linear alternate;
+  animation-play-state: inherit;
 }
 
 @keyframes spin {

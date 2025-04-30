@@ -5,7 +5,7 @@
 const char *TAG = "Main";
 
 const int motorPin = 18;
-const int freq = 5000;
+const int freq = 2000;
 const int ledChannel = 0;
 const int resolution = 8;
 
@@ -18,19 +18,19 @@ enum class ControlAction : uint8_t
 };
 
 const char *serviceUUID = "686ae9e3-0b45-485c-90bb-9442f3571af7";
-const char *pwmCharacteristicUUID = "13e827f5-ecde-4927-b5f4-fd3f27ac89ee";
-const char *controlCharacteristicUUID = "e750171f-7796-4d77-bdfb-5b16dff6dc59";
+const char *pwmUUID = "13e827f5-ecde-4927-b5f4-fd3f27ac89ee";
+const char *controlUUID = "e750171f-7796-4d77-bdfb-5b16dff6dc59";
 
 BLEService service(serviceUUID);
-BLEUnsignedCharCharacteristic pwmCharacteristic(pwmCharacteristicUUID, BLERead | BLENotify);
-BLEUnsignedShortCharacteristic controlCharacteristic(controlCharacteristicUUID, BLEWrite);
+BLEUnsignedCharCharacteristic pwmCharacteristic(pwmUUID, BLERead | BLENotify);
+BLEUnsignedShortCharacteristic controlCharacteristic(controlUUID, BLEWrite);
 
 // callbacks de eventos bluetooth
 void handleControlWrite(BLEDevice central, BLECharacteristic characteristic);
 void handleConnected(BLEDevice central);
 void handleDisconnected(BLEDevice central);
 
-int currentPWM = 128;
+int currentPWM = 0;
 
 bool isStopping = false;
 const uint8_t stopStep = 2;
@@ -62,7 +62,7 @@ void setup()
   BLE.setEventHandler(BLEConnected, handleConnected);
   BLE.setEventHandler(BLEDisconnected, handleDisconnected);
 
-  BLE.setLocalName("ESP32_BLE_PWM");
+  BLE.setLocalName("Controle Esteira");
   BLE.advertise();
   ESP_LOGI(TAG, "BLE device is advertising");
 }
@@ -87,9 +87,7 @@ void loop()
 
   static uint8_t acc = 0;
   if (acc % 20 == 0)
-  {
     pwmCharacteristic.writeValue(currentPWM);
-  }
   acc++;
 
   delay(20);

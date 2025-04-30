@@ -1,11 +1,13 @@
 import AppFooter from "../../Components/AppFooter";
 import Button from "../../Components/Button";
+import useBluetoothConnection from "../../Lib/bluetooth";
 import { manifest, useWindowing } from "../../Lib/compass_navigator";
 import { ConnectionWindow } from "../connection/_windows";
 import { ControlWindow } from "../pwm_control/_windows";
 
 export default function HomePage() {
   const windowing = useWindowing();
+  const ble = useBluetoothConnection();
 
   function openPage(page: "Connection" | "Control") {
     switch (page) {
@@ -24,10 +26,15 @@ export default function HomePage() {
         <h1 className="text-xl">Home Page</h1>
       </nav>
       <section className="flex flex-col items-stretch gap-2 px-4">
-        <Button className="p-24 text-2xl" onClick={openPage.bind(null, "Connection")}>
+        <Button
+          className="h-36 justify-center p-24 text-2xl"
+          onClick={openPage.bind(null, "Connection")}>
           Conexão
         </Button>
-        <Button className="p-24 text-2xl" onClick={openPage.bind(null, "Control")}>
+        <Button
+          className="h-36 justify-center p-24 text-2xl"
+          onClick={openPage.bind(null, "Control")}
+          disabled={ble.state !== "Connected"}>
           Controle
         </Button>
       </section>
@@ -38,5 +45,5 @@ export default function HomePage() {
 
 export const HomePageWindow = manifest(HomePage, {
   initialTitle: () => "Home Page",
-  hasAnimation: true,
+  hasAnimation: false,
 });
