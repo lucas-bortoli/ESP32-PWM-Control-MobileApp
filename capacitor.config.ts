@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.bortoli.nsreadings",
-  appName: "96Readings",
+  appId: "com.bortoli.pwm_control",
+  appName: "Controle PWM",
   webDir: "dist",
   server: {
     // url: "http://localhost:5173",
