@@ -1,4 +1,4 @@
-import { BleClient } from "@capacitor-community/bluetooth-le";
+import { BleClient, ScanResult } from "@capacitor-community/bluetooth-le";
 import { Capacitor } from "@capacitor/core";
 import { ImperativeObject, notifyUpdate } from "../imperative_object";
 import generateUUID from "../uuid";
@@ -36,28 +36,40 @@ export default class BluetoothOps implements ImperativeObject {
 
       this.state = "Connecting";
       notifyUpdate(this);
+
       await BleClient.initialize({ androidNeverForLocation: true });
 
-      // Request device
-      const device = await BleClient.requestDevice({
-        services: [SERVICE_UUID],
-      });
+      // platform-specific device selection
+      if (Capacitor.getPlatform() === "web") {
+        // on web: use requestDevice with dialog. the browser will show a popup
+        const device = await BleClient.requestDevice({
+          services: [SERVICE_UUID],
+        });
 
-      // handle device selection cancellation
-      if (!device) {
-        this.state = "NotConnected";
-        notifyUpdate(this);
-        throw new Error("Device selection canceled.");
+        if (!device) {
+          this.state = "NotConnected";
+          notifyUpdate(this);
+          throw new Error("Device selection canceled.");
+        }
+
+        this.deviceId = device.deviceId;
+      } else {
+        // on Android: use requestLEScan and connect to first matching device (this prevents showing the library's native scan UI)
+        const scanResult = await this.scanForDevice();
+        if (!scanResult) {
+          throw new Error("No device found during scan.");
+        }
+
+        this.deviceId = scanResult.device.deviceId;
       }
 
-      this.deviceId = device.deviceId;
       this.state = "Connecting";
       notifyUpdate(this);
 
       // connect to the device
-      await BleClient.connect(this.deviceId, (deviceId) => this.handleDisconnect(deviceId));
+      await BleClient.connect(this.deviceId!, (deviceId) => this.handleDisconnect(deviceId));
 
-      // discover services and characteristics
+      // then discover services and characteristics
       await this.discoverServices();
       await this.subscribeToStatusCharacteristic();
 
@@ -70,6 +82,26 @@ export default class BluetoothOps implements ImperativeObject {
       this.onErrorCallback?.(error as Error);
       notifyUpdate(this);
     }
+  }
+
+  private async scanForDevice(timeout: number = 15000): Promise<{ device: any } | null> {
+    return new Promise((resolve) => {
+      const scanCallback = (result: ScanResult) => {
+        console.log(result);
+        if (result.uuids?.includes(SERVICE_UUID)) {
+          BleClient.stopLEScan();
+          resolve({ device: result.device });
+        }
+      };
+
+      BleClient.requestLEScan({ services: [SERVICE_UUID] }, scanCallback);
+
+      // Stop scanning after timeout
+      setTimeout(() => {
+        BleClient.stopLEScan();
+        resolve(null);
+      }, timeout);
+    });
   }
 
   public async increasePWM(delta: number): Promise<void> {
@@ -87,7 +119,7 @@ export default class BluetoothOps implements ImperativeObject {
         SERVICE_UUID,
         CONTROL_CHARACTERISTIC_UUID,
         new DataView(value.buffer),
-        { timeout: 5000 } // 5-second timeout
+        { timeout: 5000 }
       );
       console.log(`Increased PWM by ${delta}`);
     } catch (error) {
@@ -111,7 +143,7 @@ export default class BluetoothOps implements ImperativeObject {
         SERVICE_UUID,
         CONTROL_CHARACTERISTIC_UUID,
         new DataView(value.buffer),
-        { timeout: 5000 } // 5-second timeout
+        { timeout: 5000 }
       );
       console.log(`Decreased PWM by ${delta}`);
     } catch (error) {
@@ -135,7 +167,7 @@ export default class BluetoothOps implements ImperativeObject {
         SERVICE_UUID,
         CONTROL_CHARACTERISTIC_UUID,
         new DataView(valueArray.buffer),
-        { timeout: 5000 } // 5-second timeout
+        { timeout: 5000 }
       );
       console.log(`Set PWM to ${value}`);
     } catch (error) {
@@ -156,7 +188,7 @@ export default class BluetoothOps implements ImperativeObject {
         SERVICE_UUID,
         CONTROL_CHARACTERISTIC_UUID,
         new DataView(value.buffer),
-        { timeout: 5000 } // 5-second timeout
+        { timeout: 5000 }
       );
       console.log("Motor stop initiated.");
     } catch (error) {
@@ -175,7 +207,7 @@ export default class BluetoothOps implements ImperativeObject {
         this.deviceId!,
         SERVICE_UUID,
         STATUS_CHARACTERISTIC_UUID,
-        { timeout: 5000 } // 5-second timeout
+        { timeout: 5000 }
       );
       return result.getUint8(0);
     } catch (error) {
