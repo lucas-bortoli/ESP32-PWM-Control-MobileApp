@@ -1,5 +1,5 @@
 import { createContext, PropsWithChildren, useContext, useMemo } from "react";
-import useSubscription from "../imperative_object";
+import useObjectSubscription from "../imperative_object";
 import BluetoothOps from "./connection";
 
 interface BluetoothContext {
@@ -21,7 +21,7 @@ export function BluetoothProvider(props: PropsWithChildren) {
 }
 
 export default function useBluetoothConnection() {
-  const bluetooth = useSubscription(useContext(context)!);
+  const bluetooth = useObjectSubscription(useContext(context)!);
 
   return bluetooth;
 }
